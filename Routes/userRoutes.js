@@ -19,7 +19,7 @@ router.post('/register', registerUser);
 // Login Route
 router.post('/login', loginUser);
 // Get user details (GET)
-router.get('/get-user/:id', getUser);  // Adding a middleware to verify JWT token
+router.get('/get-user/:userId', getUser);  // Adding a middleware to verify JWT token
 
 // Update user details (PUT)
 router.put('/update-user/:id', updateUser);  // Adding a middleware to verify JWT token

@@ -73,6 +73,7 @@ export const registerUser = async (req, res) => {
 };
 
 
+
 export const loginUser = async (req, res) => {
   const { mobile } = req.body;
 
@@ -90,14 +91,19 @@ export const loginUser = async (req, res) => {
       await user.save();
     }
 
-    // ✅ Respond with user info
+    // ✅ Generate JWT Token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET_KEY, {
+      expiresIn: '1h',
+    });
+
+    // ✅ Respond with user info + token
     return res.status(200).json({
       message: "Login successful",
+      token,
       user: {
         _id: user._id,
         mobile: user.mobile,
         name: user.name || null,
-        myBookings: user.myBookings || []
       }
     });
 
@@ -115,7 +121,7 @@ export const loginUser = async (req, res) => {
 // User Controller (GET User)
 export const getUser = async (req, res) => {
   try {
-    const userId = req.params.id;  // Get the user ID from request params
+    const userId = req.params.userId;  // Get the user ID from request params
 
     // Find user by ID
     const user = await User.findById(userId);
