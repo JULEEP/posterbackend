@@ -7,9 +7,8 @@ import dotenv from 'dotenv';
 import connectDatabase from './db/connectDatabase.js';
 import path from 'path'; // Import path to work with file and directory paths
 import UserRoutes from './Routes/userRoutes.js'
-import staffRoutes from './Routes/staffRoutes.js'
-import carRoutes from './Routes/carRoutes.js'
-
+import CategoryRoutes from './Routes/CategoryRoutes.js'
+import PosterRoutes from './Routes/posterRoutes.js'
 import { fileURLToPath } from 'url';  // Import the fileURLToPath method
 
 
@@ -53,8 +52,10 @@ app.use(express.static(path.join(path.resolve(), '../client')));
 const server = http.createServer(app);
 
 app.use('/api/users', UserRoutes);
-app.use('/api/staff', staffRoutes); // Prefix all staff-related routes with /api/staff
-app.use('/api/car', carRoutes); // Prefix with '/api'
+app.use('/api/category', CategoryRoutes);
+app.use('/api/poster', PosterRoutes);
+
+
 
 
 

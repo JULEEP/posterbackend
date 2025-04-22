@@ -7,8 +7,6 @@ import {
      createProfile, 
      editProfile, 
      getProfile,
-     createBooking,
-     getUserBookings
     } from '../Controller/UserController.js'; // Import UserController
 
 const router = express.Router();
@@ -31,9 +29,6 @@ router.put('/edit-profile/:id', editProfile);  // Profile editing by userId
 
 // Get the user profile by userId
 router.get('/get-profile/:id', getProfile);  // Get profile by userId
-router.post('/create-booking', createBooking);  // Get profile by userId
-// Assuming you're using Express router
-router.get('/bookings/:userId', getUserBookings);
 
 
 
