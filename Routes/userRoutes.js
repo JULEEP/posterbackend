@@ -7,6 +7,9 @@ import {
      createProfile, 
      editProfile, 
      getProfile,
+     sendSms,
+     sendBirthdayWishes,
+     checkUserBirthday
     } from '../Controller/UserController.js'; // Import UserController
 
 const router = express.Router();
@@ -29,6 +32,12 @@ router.put('/edit-profile/:id', editProfile);  // Profile editing by userId
 
 // Get the user profile by userId
 router.get('/get-profile/:id', getProfile);  // Get profile by userId
+router.post('/send-sms', sendSms);
+router.get('/send-birthday-wishes', sendBirthdayWishes);
+router.get('/check-birthday/:userId', checkUserBirthday);
+
+
+
 
 
 

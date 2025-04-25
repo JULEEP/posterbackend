@@ -3,6 +3,23 @@ import dotenv from 'dotenv';
 import User from '../Models/User.js';
 import multer from 'multer'; // Import multer for file handling
 import path from 'path';  // To resolve file paths
+import twilio from 'twilio';
+import { SendSms } from '../config/twilioConfig.js';
+
+
+
+dotenv.config();
+
+
+
+// Twilio credentials from environment
+const accountSid = process.env.TWILIO_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const twilioPhone = process.env.TWILIO_PHONE;
+
+// Create Twilio client
+const client = twilio(accountSid, authToken);
+
 
 
 
@@ -301,6 +318,102 @@ export const getProfile = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+// SMS sending function
+export const sendSms = async (req, res) => {
+  try {
+    const { mobile, message } = req.body;
+
+    if (!mobile || !message) {
+      return res.status(400).json({ error: 'Mobile number and message are required.' });
+    }
+
+    const response = await client.messages.create({
+      body: message,
+      from: twilioPhone,
+      to: mobile
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'SMS sent successfully!',
+      twilioResponse: response
+    });
+  } catch (error) {
+    console.error('Error sending SMS:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send SMS',
+      details: error.message
+    });
+  }
+};
+
+
+// Controller to send birthday wishes
+export const sendBirthdayWishes = async (req, res) => {
+  try {
+    const today = dayjs().format('MM-DD'); // Get today's date in MM-DD format
+    const users = await User.find(); // Fetch all users from the DB
+
+    const birthdayPeople = users.filter(user => {
+      // Compare today's date with user's DOB (formatted as MM-DD)
+      return user.dob && dayjs(user.dob).format('MM-DD') === today;
+    });
+
+    // Send birthday wishes to users whose birthday is today
+    for (const user of birthdayPeople) {
+      const message = `🎉 Happy Birthday ${user.name}! Wishing you a day filled with joy, laughter, and cake! 🎂🥳`;
+      await SendSms(user.mobile, message); // Send SMS via Twilio
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Birthday wishes sent to users.',
+      totalWished: birthdayPeople.length
+    });
+  } catch (error) {
+    console.error('Error sending birthday wishes:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send birthday wishes',
+      details: error.message
+    });
+  }
+};
+
+
+export const checkUserBirthday = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const today = dayjs().format('MM-DD');
+    const dob = user.dob ? dayjs(user.dob).format('MM-DD') : null;
+
+    if (dob === today) {
+      return res.status(200).json({
+        success: true,
+        isBirthday: true,
+        message: `🎉 Happy Birthday ${user.name}! Have a fantastic day! 🎂`,
+      });
+    } else {
+      return res.status(200).json({
+        success: true,
+        isBirthday: false,
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Something went wrong',
+      error: error.message
+    });
   }
 };
 

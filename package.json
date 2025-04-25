@@ -33,6 +33,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.2",
     "multer": "^1.4.5-lts.1",
+    "node-cron": "^3.0.3",
     "nodemailer": "^6.10.0",
     "nodemon": "^3.1.9",
     "openai": "^4.80.0",
@@ -41,7 +42,8 @@
     "puppeteer-core": "^23.11.1",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
-    "stream-to-buffer": "^0.1.0"
+    "stream-to-buffer": "^0.1.0",
+    "twilio": "^5.5.2"
   },
   "type": "module"
 }

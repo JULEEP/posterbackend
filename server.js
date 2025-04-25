@@ -10,6 +10,9 @@ import UserRoutes from './Routes/userRoutes.js'
 import CategoryRoutes from './Routes/CategoryRoutes.js'
 import PosterRoutes from './Routes/posterRoutes.js'
 import { fileURLToPath } from 'url';  // Import the fileURLToPath method
+import { sendBirthdayWishes } from './Controller/UserController.js';
+import cron from 'node-cron';
+
 
 
 dotenv.config();
@@ -40,6 +43,18 @@ app.get("/", (req, res) => {
 
 // Get the directory name for the current file (equivalent of __dirname in CommonJS)
 const __filename = fileURLToPath(import.meta.url);
+
+
+// Run every day at 12:00 PM (Noon)
+cron.schedule('0 12 * * *', () => {
+    console.log('⏰ Running Birthday Wishes Job at 12 PM');
+    sendBirthdayWishes(
+      {}, 
+      { 
+        status: () => ({ json: (msg) => console.log('🎉 Birthday Log:', msg) }) 
+      }
+    );
+  });
 
 // Middleware to parse JSON bodies
 app.use(bodyParser.json());
