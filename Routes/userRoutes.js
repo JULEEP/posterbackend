@@ -7,11 +7,24 @@ import {
      createProfile, 
      editProfile, 
      getProfile,
-     sendSms,
      sendBirthdayWishes,
-     checkUserBirthday
+     checkUserBirthday,
+     postStory,
+     getAllStories,
+     getUserStories,
+     purchasePlan,
+     getSubscribedPlan,
+     addCustomerToUser,
+     getAllCustomersForUser,
+     updateCustomer,
+     deleteCustomer,
+     buyPoster,
+     checkoutOrder,
+     getAllOrders,
+     getOrdersByUserId,
+     deleteStory
     } from '../Controller/UserController.js'; // Import UserController
-
+import uploads from '../config/uploadConfig.js';
 const router = express.Router();
 
 // Registration Route
@@ -32,9 +45,31 @@ router.put('/edit-profile/:id', editProfile);  // Profile editing by userId
 
 // Get the user profile by userId
 router.get('/get-profile/:id', getProfile);  // Get profile by userId
-router.post('/send-sms', sendSms);
 router.get('/send-birthday-wishes', sendBirthdayWishes);
 router.get('/check-birthday/:userId', checkUserBirthday);
+router.post('/post/:userId', uploads, postStory);
+// routes/storyRoutes.js
+router.delete('/deletestory/:userId/:storyId', deleteStory);
+router.get('/getAllStories', getAllStories);
+router.get('/getUserStories/:userId', getUserStories);
+router.post('/purchaseplan', purchasePlan);
+router.get('/myplan/:userId', getSubscribedPlan);
+router.post('/addcustomer/:userId', addCustomerToUser);
+router.get('/allcustomers/:userId', getAllCustomersForUser);
+router.put('/update-customers/:userId/:customerId', updateCustomer);
+router.delete('/delete-customers/:userId/:customerId', deleteCustomer);
+router.post('/buy', buyPoster);
+router.post('/checkout', checkoutOrder);
+// ✅ New routes:
+router.get('/allorders', getAllOrders);               // GET /api/orders/all
+router.get('/userorders/:userId', getOrdersByUserId); // GET /api/orders/user/:userId
+
+
+
+
+
+
+
 
 
 

@@ -1,60 +1,192 @@
 import Poster from "../Models/Poster.js";
 // ✅ Create a new poster
 export const createPoster = async (req, res) => {
-    try {
-      const {
-        name,
-        categoryName,
-        price,
-        images,
-        description,
-        size,
-        festivalDate, // festivalDate is now optional
-        inStock,
-        tags
-      } = req.body;
-  
-      // If festivalDate is provided, convert it to a human-readable format, otherwise set it to null or default
-      const formattedFestivalDate = festivalDate 
-        ? new Date(festivalDate).toLocaleDateString('en-GB') // Format as 'dd/mm/yyyy'
-        : null; // If no festivalDate, keep it as null or you can set it to a default value like new Date()
-  
-      // Create new poster object
-      const newPoster = new Poster({
-        name,
-        categoryName,
-        price,
-        images,
-        description,
-        size,
-        festivalDate: formattedFestivalDate, // Store festivalDate if provided, otherwise null
-        inStock,
-        tags
-      });
-  
-      // Save the poster
-      const savedPoster = await newPoster.save();
-  
-      // Send response with the poster, including festivalDate if it's set
-      res.status(201).json({
-        ...savedPoster.toObject(),
-        festivalDate: formattedFestivalDate // Include festivalDate in response (it can be null)
-      });
-    } catch (error) {
-      res.status(500).json({ message: 'Error creating poster', error });
+  try {
+    const {
+      name,
+      categoryName,
+      price,
+      description,
+      size,
+      festivalDate,
+      inStock,
+      tags
+    } = req.body;
+
+    let images = [];
+
+    // ✅ Handle multiple image uploads via 'images'
+    if (req.files && req.files['images']) {
+      images = req.files['images'].map(file => `uploads/${file.filename}`);
     }
-  };
+
+    // ✅ Handle single image upload via 'image'
+    if (req.files && req.files['image']) {
+      images.push(`uploads/${req.files['image'][0].filename}`);
+    }
+
+    const newPoster = new Poster({
+      name,
+      categoryName,
+      price,
+      description,
+      size,
+      festivalDate: festivalDate || null,
+      inStock,
+      tags,
+      images,
+    });
+
+    const savedPoster = await newPoster.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Poster created successfully",
+      poster: savedPoster,
+    });
+  } catch (error) {
+    console.error("Error creating poster:", error);
+    res.status(500).json({ success: false, message: "Error creating poster", error });
+  }
+};
+
+
+
+// ✅ Edit an existing poster
+export const editPoster = async (req, res) => {
+  try {
+    const { posterId } = req.params;  // Poster ID from URL parameter
+    const {
+      name,
+      categoryName,
+      price,
+      description,
+      size,
+      festivalDate,
+      inStock,
+      tags
+    } = req.body;
+
+    // Find the poster by ID
+    const poster = await Poster.findById(posterId);
+
+    if (!poster) {
+      return res.status(404).json({ message: 'Poster not found' });
+    }
+
+    // Handle new images if any were uploaded
+    let images = poster.images; // Keep existing images by default
+
+    // If new images are uploaded, add them to the existing ones
+    if (req.files['images']) {
+      const newImages = req.files['images'].map(file => `uploads/${file.filename}`);
+      images = [...images, ...newImages]; // Append new images to existing ones
+    }
+
+    if (req.files['image']) {
+      const newImage = `uploads/${req.files['image'][0].filename}`;
+      images.push(newImage);  // Append new single image if uploaded
+    }
+
+    // Update the poster fields
+    poster.name = name || poster.name;
+    poster.categoryName = categoryName || poster.categoryName;
+    poster.price = price || poster.price;
+    poster.images = images;
+    poster.description = description || poster.description;
+    poster.size = size || poster.size;
+    poster.festivalDate = festivalDate || poster.festivalDate;
+    poster.inStock = inStock !== undefined ? inStock : poster.inStock;
+    poster.tags = tags || poster.tags;
+
+    // Save the updated poster
+    const updatedPoster = await poster.save();
+
+    // Send the updated poster in response
+    res.status(200).json(updatedPoster);
+  } catch (error) {
+    res.status(500).json({ message: 'Error editing poster', error });
+  }
+};
+
+
+// ✅ Delete a poster
+export const deletePoster = async (req, res) => {
+  try {
+    const { posterId } = req.params;  // Poster ID from URL parameter
+
+    // Find and delete the poster by ID
+    const poster = await Poster.findByIdAndDelete(posterId);
+
+    if (!poster) {
+      return res.status(404).json({ message: 'Poster not found' });
+    }
+
+    // Optionally, delete the image files from the server if you no longer need them
+    // (Implementing file system deletion would require the 'fs' module and careful handling of the files)
+
+    res.status(200).json({ message: 'Poster deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting poster', error });
+  }
+};
+
+
   
   
-// ✅ Get all posters
 export const getAllPosters = async (req, res) => {
   try {
-    const posters = await Poster.find().sort({ createdAt: -1 });
+    let posters = await Poster.find().sort({ createdAt: -1 });
+
+    let hidePrice = true;
+
+    // ✅ Check if user is authenticated and has an active plan
+    if (req.user && req.user.id) {
+      const user = await User.findById(req.user.id);
+      const currentDate = new Date();
+
+      const hasActivePlan = user.subscribedPlans.some(plan => {
+        return new Date(plan.endDate) > currentDate;
+      });
+
+      if (hasActivePlan) {
+        hidePrice = false;
+      }
+    }
+
+    // ✅ If user has no active plan, remove price from posters
+    if (hidePrice) {
+      posters = posters.map(poster => {
+        const { price, ...rest } = poster.toObject(); // Remove price
+        return rest;
+      });
+    }
+
     res.status(200).json(posters);
   } catch (error) {
+    console.error("Error fetching posters:", error);
     res.status(500).json({ message: 'Error fetching posters', error });
   }
 };
+
+
+// ✅ Get posters by categoryName
+export const getPostersByCategory = async (req, res) => {
+  try {
+    const { categoryName } = req.body;
+
+    if (!categoryName) {
+      return res.status(400).json({ message: 'categoryName is required' });
+    }
+
+    const posters = await Poster.find({ categoryName }).sort({ createdAt: -1 });
+
+    res.status(200).json(posters);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching posters by categoryName', error });
+  }
+};
+
 
 // ✅ Get all posters from "Beauty Products" category
 export const getAllPostersBeauty = async (req, res) => {
@@ -121,23 +253,23 @@ export const getSinglePoster = async (req, res) => {
 };
 
 
-// ✅ Get posters by festivalDate
-export const getPostersByFestivalDate = async (req, res) => {
-    try {
-      const { festivalDate } = req.query;
-  
-      if (!festivalDate) {
-        return res.status(400).json({ message: "Festival date is required" });
-      }
-  
-      const posters = await Poster.find({ festivalDate: new Date(festivalDate) }).sort({ createdAt: -1 });
-  
-      if (posters.length === 0) {
-        return res.status(404).json({ message: "No posters found for this festival date" });
-      }
-  
-      res.status(200).json(posters);
-    } catch (error) {
-      res.status(500).json({ message: "Error fetching posters", error });
+export const getPostersByFestivalDates = async (req, res) => {
+  try {
+    const { festivalDate } = req.body;
+
+    if (!festivalDate) {
+      return res.status(400).json({ message: "Festival date is required" });
     }
-  };
+
+    const posters = await Poster.find({ festivalDate }).sort({ createdAt: -1 });
+
+    if (posters.length === 0) {
+      return res.status(404).json({ message: "No posters found for this festival date" });
+    }
+
+    res.status(200).json(posters);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching posters", error });
+  }
+};
+

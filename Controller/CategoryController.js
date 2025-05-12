@@ -1,26 +1,41 @@
 import Category from "../Models/Category.js";
-// 🟢 Create a new category
+import { uploadDoctorImage } from "../config/multerConfig.js";
 export const createCategory = async (req, res) => {
-  try {
-    const { categoryName, image } = req.body;
+   try {
+    // Handle the image upload
+    uploadDoctorImage(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ message: 'Error uploading image', error: err.message });
+      }
 
-    const newCategory = new Category({
-      categoryName,
-      image,
-    });
+      // After the image is uploaded, create the doctor with the form data
+      const { categoryName } = req.body;
 
-    const savedCategory = await newCategory.save();
+      // Parse the schedule (string) if it's sent ass a stringified JSON array
 
-    res.status(201).json({
-      success: true,
-      message: "Category created successfully",
-      category: savedCategory,
+      // Get the image path (this will be the file path saved in the uploads directory)
+      const image = req.file ? `/uploads/categoryimage/${req.file.filename}` : null;
+
+      // Create a new Doctor document
+      const category = new Category({
+        categoryName,
+        image,
+      });
+
+      // Save the doctor to the database
+      await category.save();
+
+      // Send response back
+      res.status(201).json({ message: 'Doctor created successfully', category });
     });
   } catch (error) {
-    console.error("Error creating category:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error('Error creating doctor:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+
+
 
 // 📦 Get all categories
 export const getAllCategories = async (req, res) => {
@@ -86,3 +101,27 @@ export const updateCategory = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+
+// 🗑️ Delete a category
+export const deleteCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedCategory = await Category.findByIdAndDelete(id);
+
+    if (!deletedCategory) {
+      return res.status(404).json({ success: false, message: "Category not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Category deleted successfully",
+      category: deletedCategory,
+    });
+  } catch (error) {
+    console.error("Error deleting category:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+

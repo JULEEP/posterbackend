@@ -8,6 +8,9 @@ const categorySchema = new mongoose.Schema(
       type: String,
       // You can add 'required: true' and 'trim: true' if needed later
     },
+    subCategoryName: {
+      type: String,
+    },
     image: {
       type: String,
       default: 'default-category-image.jpg', // Optional default image

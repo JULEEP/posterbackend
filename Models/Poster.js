@@ -27,9 +27,10 @@ const posterSchema = new mongoose.Schema({
     enum: ['A3', 'A4', 'A5', 'Custom'],
     default: 'A4'
   },
-  festivalDate: {
-    type: Date, // Store festival date as a Date object
-  },
+festivalDate: {
+  type: String,
+  default: null
+},
   inStock: {
     type: Boolean,
     default: true
