@@ -8,7 +8,7 @@ import BusinessCard from "../Models/BusinessCard.js";
 import Admin from "../Models/Admin.js";
 import generateToken from "../config/jwtToken.js";
 import Plan from "../Models/Plan.js";
-import { uploadLogoImage, uploadBusinessCardImage } from "../config/multerConfig.js";
+import cloudinary from "../config/cloudinary.js";
 
 // User Controller (GET All Users)
 export const getAllUsers = async (req, res) => {
@@ -350,25 +350,28 @@ export const getDashboardData = async (req, res) => {
 
 export const createLogo = async (req, res) => {
   try {
-    uploadLogoImage(req, res, async (err) => {
-      if (err) {
-        return res.status(400).json({ message: "Upload error", error: err.message });
-      }
+    const { name, description, price } = req.body;
 
-      const { name, description, price } = req.body;
+    if (!req.files || !req.files.image) {
+      return res.status(400).json({ message: "Logo image is required." });
+    }
 
-      let image = "";
-      if (req.files['image']) {
-        image = `/uploads/logo-images/${req.files['image'][0].filename}`;
-      }
-
-      const newLogo = new Logo({ name, description, price, image });
-      const savedLogo = await newLogo.save();
-
-      res.status(201).json(savedLogo);
+    const file = req.files.image; // Should be a single file
+    
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(file.tempFilePath, {
+      folder: "logo-images"
     });
+
+    const image = result.secure_url;
+
+    const newLogo = new Logo({ name, description, price, image });
+    const savedLogo = await newLogo.save();
+
+    res.status(201).json(savedLogo);
   } catch (error) {
-    res.status(500).json({ message: 'Error creating logo', error });
+    console.error("Error uploading logo:", error);
+    res.status(500).json({ message: 'Error creating logo', error: error.message });
   }
 };
 
@@ -431,47 +434,56 @@ export const deleteLogo = async (req, res) => {
 
 export const createBusinessCard = async (req, res) => {
   try {
-    uploadBusinessCardImage(req, res, async (err) => {
-      if (err) {
-        return res.status(400).json({ message: "Image upload error", error: err.message });
-      }
+    const {
+      name,
+      category,
+      price,
+      offerPrice,
+      description,
+      size,
+      inStock,
+      tags
+    } = req.body;
 
-      const {
-        name,
-        category,
-        price,
-        offerPrice,
-        description,
-        size,
-        inStock,
-        tags
-      } = req.body;
+    // Check if images are uploaded
+    if (!req.files || !req.files.images) {
+      return res.status(400).json({ message: "No images uploaded" });
+    }
 
-      const images = req.files.map(file => `/uploads/business-card-images/${file.filename}`);
+    const files = Array.isArray(req.files.images) ? req.files.images : [req.files.images];
+    const uploadedImages = [];
 
-      const newBusinessPoster = new BusinessCard({
-        name,
-        category,
-        price,
-        offerPrice,
-        images,
-        description,
-        size,
-        inStock,
-        tags: tags ? tags.split(',') : []
+    // Upload all images to Cloudinary
+    for (const file of files) {
+      const result = await cloudinary.uploader.upload(file.tempFilePath, {
+        folder: "business-card-images"
       });
 
-      const savedBusinessPoster = await newBusinessPoster.save();
+      uploadedImages.push(result.secure_url);
+    }
 
-      res.status(201).json({
-        success: true,
-        message: 'Business poster created successfully',
-        poster: savedBusinessPoster
-      });
+    const newBusinessPoster = new BusinessCard({
+      name,
+      category,
+      price,
+      offerPrice,
+      images: uploadedImages,
+      description,
+      size,
+      inStock,
+      tags: tags ? tags.split(',') : []
+    });
+
+    const savedBusinessPoster = await newBusinessPoster.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Business card created successfully',
+      poster: savedBusinessPoster
     });
   } catch (error) {
-    console.error("Error creating business poster:", error);
-    res.status(500).json({ message: "Server error", error });
+    console.error("Error creating business card:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 // ✅ Get all Business Cards

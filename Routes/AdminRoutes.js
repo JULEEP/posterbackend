@@ -23,7 +23,6 @@ import {
     logoutAdmin,
     deleteUser,
 } from "../Controller/AdminController.js";
-import uploads from "../config/uploadConfig.js";
 
 const router = express.Router();
 
@@ -39,11 +38,11 @@ router.get('/getcontactus', getAllContactMessages);     // GET /api/contact
 router.get('/dashboard', getDashboardData);
 router.post('/createlogo', createLogo);
 router.get('/getlogos', getAllLogos);
-router.put('/updatelogo/:logoId', uploads, updateLogo);
+router.put('/updatelogo/:logoId', updateLogo);
 router.delete('/deletelogo/:logoId', deleteLogo);
 router.post('/createbusinesscard', createBusinessCard);
 router.get('/getbusinesscards', getAllBusinessCards);
-router.put('/updatebusinesscard/:businessCardId', uploads, updateBusinessCard);
+router.put('/updatebusinesscard/:businessCardId', updateBusinessCard);
 router.delete('/deletebusinesscard/:businessCardId', deleteBusinessCard);
 router.post('/register', registerAdmin);
 router.post('/login', loginAdmin);
