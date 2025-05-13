@@ -11,15 +11,15 @@ import {
   getUgadiPosters,
   getPostersByCategory,
   editPoster,
-  deletePoster
+  deletePoster,
+  Postercreate
 } from '../Controller/PosterController.js';
-import uploads from '../config/uploadConfig.js';
 
 const router = express.Router();
 
-router.post('/create-poster', uploads, createPoster);
+router.post('/create-poster', createPoster);
 router.get('/getallposter', getAllPosters); 
-router.put('/editposter/:posterId', uploads, editPoster);
+router.put('/editposter/:posterId', editPoster);
 router.delete('/deleteposter/:posterId', deletePoster);
 router.get('/getposterbycategory', getPostersByCategory); 
 router.post('/festival', getPostersByFestivalDates); 
@@ -28,6 +28,8 @@ router.get('/beautyposter', getAllPostersBeauty);
 router.get('/chemicalposter', getChemicalPosters); 
 router.get('/clothingposter', getClothingPosters);
 router.get('/ugadiposter', getUgadiPosters);
+router.post('/create', Postercreate);
+
 
 
 

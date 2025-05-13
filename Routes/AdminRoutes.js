@@ -37,11 +37,11 @@ router.get('/getaboutus', getAboutUs);
 router.post('/contact', submitContactMessage);     // POST /api/contact
 router.get('/getcontactus', getAllContactMessages);     // GET /api/contact
 router.get('/dashboard', getDashboardData);
-router.post('/createlogo', uploads, createLogo);
+router.post('/createlogo', createLogo);
 router.get('/getlogos', getAllLogos);
 router.put('/updatelogo/:logoId', uploads, updateLogo);
 router.delete('/deletelogo/:logoId', deleteLogo);
-router.post('/createbusinesscard', uploads, createBusinessCard);
+router.post('/createbusinesscard', createBusinessCard);
 router.get('/getbusinesscards', getAllBusinessCards);
 router.put('/updatebusinesscard/:businessCardId', uploads, updateBusinessCard);
 router.delete('/deletebusinesscard/:businessCardId', deleteBusinessCard);

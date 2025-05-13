@@ -1,55 +1,51 @@
 import Poster from "../Models/Poster.js";
-// ✅ Create a new poster
+import { uploadPosterImages } from "../config/multerConfig.js";
+
 export const createPoster = async (req, res) => {
   try {
-    const {
-      name,
-      categoryName,
-      price,
-      description,
-      size,
-      festivalDate,
-      inStock,
-      tags
-    } = req.body;
+    // Use multer to handle image uploads
+    uploadPosterImages(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ message: "Error uploading images", error: err.message });
+      }
 
-    let images = [];
+      // Extract form data from the request
+      const {
+        name,
+        categoryName,
+        price,
+        description,
+        size,
+        festivalDate,
+        inStock,
+        tags
+      } = req.body;
 
-    // ✅ Handle multiple image uploads via 'images'
-    if (req.files && req.files['images']) {
-      images = req.files['images'].map(file => `uploads/${file.filename}`);
-    }
+      // Extract image paths
+      const images = req.files.map(file => `/uploads/poster-images/${file.filename}`);
 
-    // ✅ Handle single image upload via 'image'
-    if (req.files && req.files['image']) {
-      images.push(`uploads/${req.files['image'][0].filename}`);
-    }
+      // Create new poster
+      const poster = new Poster({
+        name,
+        categoryName,
+        price,
+        images,
+        description,
+        size,
+        festivalDate,
+        inStock,
+        tags: tags ? tags.split(",") : [] // Convert comma-separated string to array
+      });
 
-    const newPoster = new Poster({
-      name,
-      categoryName,
-      price,
-      description,
-      size,
-      festivalDate: festivalDate || null,
-      inStock,
-      tags,
-      images,
-    });
+      await poster.save();
 
-    const savedPoster = await newPoster.save();
-
-    res.status(201).json({
-      success: true,
-      message: "Poster created successfully",
-      poster: savedPoster,
+      return res.status(201).json({ message: "Poster created successfully", poster });
     });
   } catch (error) {
     console.error("Error creating poster:", error);
-    res.status(500).json({ success: false, message: "Error creating poster", error });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 
 // ✅ Edit an existing poster
@@ -270,6 +266,42 @@ export const getPostersByFestivalDates = async (req, res) => {
     res.status(200).json(posters);
   } catch (error) {
     res.status(500).json({ message: "Error fetching posters", error });
+  }
+};
+
+
+export const Postercreate = async (req, res) => {
+  try {
+    // Extract the form data from the request body
+    const { name, categoryName, price, description, size, festivalDate, inStock, tags } = req.body;
+
+    // If tags are sent as a comma-separated string, split them into an array
+    const tagArray = tags ? tags.split(',') : [];
+
+    // Create a new Poster document without image handling
+    const newPoster = new Poster({
+      name,
+      categoryName,
+      price,
+      description,
+      size,
+      festivalDate: festivalDate || null,
+      inStock,
+      tags: tagArray,
+    });
+
+    // Save the poster to the database
+    const savedPoster = await newPoster.save();
+
+    // Send response back with success
+    res.status(201).json({
+      success: true,
+      message: 'Poster created successfully',
+      poster: savedPoster,
+    });
+  } catch (error) {
+    console.error('Error creating poster:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 };
 

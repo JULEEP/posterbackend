@@ -8,6 +8,7 @@ import BusinessCard from "../Models/BusinessCard.js";
 import Admin from "../Models/Admin.js";
 import generateToken from "../config/jwtToken.js";
 import Plan from "../Models/Plan.js";
+import { uploadLogoImage, uploadBusinessCardImage } from "../config/multerConfig.js";
 
 // User Controller (GET All Users)
 export const getAllUsers = async (req, res) => {
@@ -349,17 +350,23 @@ export const getDashboardData = async (req, res) => {
 
 export const createLogo = async (req, res) => {
   try {
-    const { name, description, price } = req.body;
+    uploadLogoImage(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ message: "Upload error", error: err.message });
+      }
 
-    let image = "";
-    if (req.files['image']) {
-      image = `uploads/${req.files['image'][0].filename}`;
-    }
+      const { name, description, price } = req.body;
 
-    const newLogo = new Logo({ name, description, price, image });
-    const savedLogo = await newLogo.save();
+      let image = "";
+      if (req.files['image']) {
+        image = `/uploads/logo-images/${req.files['image'][0].filename}`;
+      }
 
-    res.status(201).json(savedLogo);
+      const newLogo = new Logo({ name, description, price, image });
+      const savedLogo = await newLogo.save();
+
+      res.status(201).json(savedLogo);
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error creating logo', error });
   }
@@ -422,35 +429,51 @@ export const deleteLogo = async (req, res) => {
 
 
 
-// ✅ Create a new Business Card
 export const createBusinessCard = async (req, res) => {
   try {
-    const { name, category, price, offerPrice, description, size, tags, inStock } = req.body;
+    uploadBusinessCardImage(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ message: "Image upload error", error: err.message });
+      }
 
-    let images = [];
-    if (req.files['images']) {
-      images = req.files['images'].map(file => `uploads/${file.filename}`);
-    }
+      const {
+        name,
+        category,
+        price,
+        offerPrice,
+        description,
+        size,
+        inStock,
+        tags
+      } = req.body;
 
-    const newBusinessCard = new BusinessCard({
-      name,
-      category,
-      price,
-      offerPrice,
-      description,
-      size,
-      tags: tags.split(",").map(tag => tag.trim()), // Assuming tags are entered as comma-separated
-      inStock,
-      images
+      const images = req.files.map(file => `/uploads/business-card-images/${file.filename}`);
+
+      const newBusinessPoster = new BusinessCard({
+        name,
+        category,
+        price,
+        offerPrice,
+        images,
+        description,
+        size,
+        inStock,
+        tags: tags ? tags.split(',') : []
+      });
+
+      const savedBusinessPoster = await newBusinessPoster.save();
+
+      res.status(201).json({
+        success: true,
+        message: 'Business poster created successfully',
+        poster: savedBusinessPoster
+      });
     });
-
-    const savedBusinessCard = await newBusinessCard.save();
-    res.status(201).json(savedBusinessCard);
   } catch (error) {
-    res.status(500).json({ message: 'Error creating business card', error });
+    console.error("Error creating business poster:", error);
+    res.status(500).json({ message: "Server error", error });
   }
 };
-
 // ✅ Get all Business Cards
 export const getAllBusinessCards = async (req, res) => {
   try {

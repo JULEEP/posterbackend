@@ -1,5 +1,6 @@
 import BusinessCategory from "../Models/BusinessCategory.js";
 import BusinessPoster from "../Models/BusinessPoster.js";
+import { uploadBusinessCardImage } from "../config/multerConfig.js";
 
 // 🟢 Create a new business category
 export const createBusinessCategory = async (req, res) => {
@@ -91,38 +92,49 @@ export const updateBusinessCategory = async (req, res) => {
 
 
 
-// ✅ Create a new business poster
 export const createBusinessPoster = async (req, res) => {
   try {
-    const {
-      name,
-      categoryName,
-      price,
-      offerPrice, // New field
-      images,
-      description,
-      size,
-      inStock,
-      tags
-    } = req.body;
+    uploadBusinessCardImage(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ message: "Image upload error", error: err.message });
+      }
 
-    const newBusinessPoster = new BusinessPoster({
-      name,
-      categoryName,
-      price,
-      offerPrice, // Include in the new document
-      images,
-      description,
-      size,
-      inStock,
-      tags
+      const {
+        name,
+        categoryName,
+        price,
+        offerPrice,
+        description,
+        size,
+        inStock,
+        tags
+      } = req.body;
+
+      const images = req.files.map(file => `/uploads/business-card-images/${file.filename}`);
+
+      const newBusinessPoster = new BusinessPoster({
+        name,
+        categoryName,
+        price,
+        offerPrice,
+        images,
+        description,
+        size,
+        inStock,
+        tags: tags ? tags.split(',') : []
+      });
+
+      const savedBusinessPoster = await newBusinessPoster.save();
+
+      res.status(201).json({
+        success: true,
+        message: 'Business poster created successfully',
+        poster: savedBusinessPoster
+      });
     });
-
-    const savedBusinessPoster = await newBusinessPoster.save();
-
-    res.status(201).json(savedBusinessPoster);
   } catch (error) {
-    res.status(500).json({ message: 'Error creating business poster', error });
+    console.error("Error creating business poster:", error);
+    res.status(500).json({ message: "Server error", error });
   }
 };
 

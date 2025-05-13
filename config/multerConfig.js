@@ -15,7 +15,12 @@ const dirs = {
   testImages: path.join(__dirname, '..', 'uploads', 'testimages'),
   companyImages: path.join(__dirname, '..', 'uploads', 'company-images'),
   staffImages: path.join(__dirname, '..', 'uploads', 'staff-images'),
-  doctorImages: path.join(__dirname, '..', 'uploads', 'categoryimage')
+  doctorImages: path.join(__dirname, '..', 'uploads', 'categoryimage'),
+  posterImages: path.join(__dirname, '..', 'uploads', 'poster-images'),
+businessCardImages: path.join(__dirname, '..', 'uploads', 'business-card-images'),
+logoImages: path.join(__dirname, '..', 'uploads', 'logo-images'),
+
+
 };
 
 // 🔧 Create all directories
@@ -87,3 +92,37 @@ export const uploadDoctorImage = multer({
   }),
   limits: { fileSize: 5 * 1024 * 1024 },
 }).single('image');
+
+
+// Poster image upload
+export const uploadPosterImages = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, dirs.posterImages),
+    filename: (req, file, cb) => cb(null, getFilename(file)),
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // Max size 10MB
+}).array('images', 5); // Accept multiple images up to 5
+
+
+// 📇 Business Card image upload
+export const uploadBusinessCardImage = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, dirs.businessCardImages),
+    filename: (req, file, cb) => cb(null, getFilename(file)),
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // Max size 10MB
+}).array('images', 5);
+
+
+// 🖼️ Logo image upload
+export const uploadLogoImage = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, dirs.logoImages),
+    filename: (req, file, cb) => cb(null, getFilename(file))
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 } // Max 5MB
+}).fields([
+  { name: 'image', maxCount: 1 }
+]);
+
+
