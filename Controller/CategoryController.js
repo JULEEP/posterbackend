@@ -1,35 +1,32 @@
 import Category from "../Models/Category.js";
-import { uploadDoctorImage } from "../config/multerConfig.js";
+import cloudinary from "../config/cloudinary.js";
 export const createCategory = async (req, res) => {
-   try {
-    // Handle the image upload
-    uploadDoctorImage(req, res, async (err) => {
-      if (err) {
-        return res.status(400).json({ message: 'Error uploading image', error: err.message });
-      }
+  try {
+    const { categoryName } = req.body;
 
-      // After the image is uploaded, create the doctor with the form data
-      const { categoryName } = req.body;
+    // Validate image presence
+    if (!req.files || !req.files.image) {
+      return res.status(400).json({ message: "Image is required" });
+    }
 
-      // Parse the schedule (string) if it's sent ass a stringified JSON array
+    const file = req.files.image;
 
-      // Get the image path (this will be the file path saved in the uploads directory)
-      const image = req.file ? `/uploads/categoryimage/${req.file.filename}` : null;
-
-      // Create a new Doctor document
-      const category = new Category({
-        categoryName,
-        image,
-      });
-
-      // Save the doctor to the database
-      await category.save();
-
-      // Send response back
-      res.status(201).json({ message: 'Doctor created successfully', category });
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(file.tempFilePath, {
+      folder: 'category', // Optional: Cloudinary folder
     });
+
+    // Create new category with uploaded image URL
+    const category = new Category({
+      categoryName,
+      image: result.secure_url,
+    });
+
+    await category.save();
+
+    res.status(201).json({ message: 'Category created successfully', category });
   } catch (error) {
-    console.error('Error creating doctor:', error);
+    console.error('Error creating category:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -45,7 +42,8 @@ export const getAllCategories = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "All categories retrieved",
-      categories,
+      categories
+
     });
   } catch (error) {
     console.error("Error getting categories:", error);

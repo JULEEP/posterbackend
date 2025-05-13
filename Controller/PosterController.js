@@ -1,48 +1,53 @@
 import Poster from "../Models/Poster.js";
-import { uploadPosterImages } from "../config/multerConfig.js";
+import cloudinary from "../config/cloudinary.js";
 
 export const createPoster = async (req, res) => {
   try {
-    // Use multer to handle image uploads
-    uploadPosterImages(req, res, async (err) => {
-      if (err) {
-        return res.status(400).json({ message: "Error uploading images", error: err.message });
-      }
+    // Destructure form data
+    const { name, categoryName, price, description, size, festivalDate, inStock, tags } = req.body;
 
-      // Extract form data from the request
-      const {
-        name,
-        categoryName,
-        price,
-        description,
-        size,
-        festivalDate,
-        inStock,
-        tags
-      } = req.body;
+    // Check if images are uploaded
+    if (!req.files || !req.files.images) {
+      return res.status(400).json({ message: "No images uploaded" });
+    }
 
-      // Extract image paths
-      const images = req.files.map(file => `/uploads/poster-images/${file.filename}`);
+    // Check if multiple images are uploaded or just one
+    const files = Array.isArray(req.files.images) ? req.files.images : [req.files.images];
 
-      // Create new poster
-      const poster = new Poster({
-        name,
-        categoryName,
-        price,
-        images,
-        description,
-        size,
-        festivalDate,
-        inStock,
-        tags: tags ? tags.split(",") : [] // Convert comma-separated string to array
+    // Array to store uploaded image URLs
+    const uploadedImages = [];
+
+    // Loop through all the uploaded files and upload to Cloudinary
+    for (const file of files) {
+      const result = await cloudinary.uploader.upload(file.tempFilePath, {
+        folder: "poster", // Specify a folder in Cloudinary
       });
 
-      await poster.save();
+      uploadedImages.push(result.secure_url);  // Store the secure URL of each image
+    }
 
-      return res.status(201).json({ message: "Poster created successfully", poster });
+    // Create a new poster in your database
+    const poster = new Poster({
+      name,
+      categoryName,
+      price,
+      images: uploadedImages,
+      description,
+      size,
+      festivalDate,
+      inStock,
+      tags: tags ? tags.split(",") : [],  // Convert tags string to an array
+    });
+
+    // Save the new poster
+    await poster.save();
+
+    return res.status(201).json({
+      message: "Poster created successfully",
+      poster,
     });
   } catch (error) {
-    console.error("Error creating poster:", error);
+    console.error("❌ Error uploading to Cloudinary:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

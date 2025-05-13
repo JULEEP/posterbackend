@@ -13,6 +13,7 @@ import Order from '../Models/Order.js';
 import Poster from '../Models/Poster.js';
 import BusinessPoster from '../Models/BusinessPoster.js';
 import QRCode from 'qrcode';  // You need to install 'qrcode' using npm
+import cloudinary from '../config/cloudinary.js';
 
 
 
@@ -434,7 +435,6 @@ export const checkUserBirthday = async (req, res) => {
 };
 
 
-// ✅ Upload story (image, video, audio) for a user
 export const postStory = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -444,8 +444,8 @@ export const postStory = async (req, res) => {
       return res.status(400).json({ message: "User ID is required." });
     }
 
-    const fileFields = ['file', 'image', 'images', 'video', 'videos', 'audio', 'audios'];
-    const uploadedFiles = fileFields.flatMap(field => req.files?.[field] || []);
+    // Normalize all uploaded files into an array
+    const uploadedFiles = Object.values(req.files || {}).flat();
 
     if (uploadedFiles.length === 0) {
       return res.status(400).json({ message: "At least one media file (image, video, or audio) is required." });
@@ -455,13 +455,22 @@ export const postStory = async (req, res) => {
     const videos = [];
     const audios = [];
 
-    uploadedFiles.forEach(file => {
-      const normalizedPath = file.path.replace(/\\/g, '/');
-      if (file.mimetype.startsWith('image')) images.push(normalizedPath);
-      else if (file.mimetype.startsWith('video')) videos.push(normalizedPath);
-      else if (file.mimetype.startsWith('audio')) audios.push(normalizedPath);
-    });
+    for (const file of uploadedFiles) {
+      const fileType = file.mimetype.split('/')[0]; // image, video, audio
 
+      // Upload directly to Cloudinary
+      const result = await cloudinary.uploader.upload(file.tempFilePath, {
+        resource_type: fileType,
+        folder: "poster" // You can use "stories" if you prefer separating folders
+      });
+
+      // Categorize uploaded URLs
+      if (fileType === 'image') images.push(result.secure_url);
+      else if (fileType === 'video') videos.push(result.secure_url);
+      else if (fileType === 'audio') audios.push(result.secure_url);
+    }
+
+    // Validate at least one valid media uploaded
     if (images.length === 0 && videos.length === 0 && audios.length === 0) {
       return res.status(400).json({ message: "Only image, video, or audio files are allowed." });
     }
@@ -469,24 +478,26 @@ export const postStory = async (req, res) => {
     const expiredAt = new Date();
     expiredAt.setHours(expiredAt.getHours() + 24);
 
+    // Save story to DB
     const newStory = new Story({
       user: userId,
+      caption,
       images,
       videos,
       audios,
-      caption,
       expired_at: expiredAt
     });
 
     await newStory.save();
 
-    // ✅ Push the new story into the user's myStories array instead of replacing it
+    // Push story ID to user
     await User.findByIdAndUpdate(userId, {
-      $push: { myStories: newStory._id } // Adding to the array, not replacing
+      $push: { myStories: newStory._id }
     });
 
     const user = await User.findById(userId);
 
+    // Final response
     res.status(201).json({
       message: "Story posted successfully!",
       story: {
@@ -503,7 +514,7 @@ export const postStory = async (req, res) => {
     });
   } catch (error) {
     console.error("Error posting story:", error);
-    res.status(500).json({ message: "Something went wrong!", error });
+    res.status(500).json({ message: "Something went wrong!", error: error.message });
   }
 };
 

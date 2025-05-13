@@ -13,6 +13,8 @@ import { fileURLToPath } from 'url';  // Import the fileURLToPath method
 import PlanRoutes from './Routes/PlanRoutes.js'
 import BusinessRoutes from './Routes/BusinessRoutes.js'
 import AdminRoutes from './Routes/AdminRoutes.js'
+import cloudinary from './config/cloudinary.js';
+import fileUpload from 'express-fileupload';
 
 dotenv.config();
 
@@ -40,6 +42,13 @@ app.use(cookieParser());
 
 // Database connection
 connectDatabase();
+
+
+// Middleware to handle file uploads
+app.use(fileUpload({
+  useTempFiles: true,
+  tempFileDir: '/tmp/', // Temporary directory to store files before upload
+}));
 
 // Default route
 app.get("/", (req, res) => {

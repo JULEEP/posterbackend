@@ -47,7 +47,7 @@ router.put('/edit-profile/:id', editProfile);  // Profile editing by userId
 router.get('/get-profile/:id', getProfile);  // Get profile by userId
 router.get('/send-birthday-wishes', sendBirthdayWishes);
 router.get('/check-birthday/:userId', checkUserBirthday);
-router.post('/post/:userId', uploads, postStory);
+router.post('/post/:userId', postStory);
 // routes/storyRoutes.js
 router.delete('/deletestory/:userId/:storyId', deleteStory);
 router.get('/getAllStories', getAllStories);

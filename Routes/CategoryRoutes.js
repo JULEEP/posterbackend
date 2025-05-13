@@ -2,8 +2,8 @@ import express from "express";
 import {
   createCategory,
   deleteCategory,
-  getAllCategories,
   getSingleCategory,
+  getAllCategories,
   updateCategory,
 } from "../Controller/CategoryController.js";
 const router = express.Router();

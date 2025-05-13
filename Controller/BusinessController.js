@@ -1,7 +1,6 @@
 import BusinessCategory from "../Models/BusinessCategory.js";
 import BusinessPoster from "../Models/BusinessPoster.js";
-import { uploadBusinessCardImage } from "../config/multerConfig.js";
-
+import cloudinary from "../config/cloudinary.js";
 // 🟢 Create a new business category
 export const createBusinessCategory = async (req, res) => {
   try {
@@ -94,49 +93,60 @@ export const updateBusinessCategory = async (req, res) => {
 
 export const createBusinessPoster = async (req, res) => {
   try {
-    uploadBusinessCardImage(req, res, async (err) => {
-      if (err) {
-        return res.status(400).json({ message: "Image upload error", error: err.message });
-      }
+    const {
+      name,
+      categoryName,
+      price,
+      offerPrice,
+      description,
+      size,
+      inStock,
+      tags
+    } = req.body;
 
-      const {
-        name,
-        categoryName,
-        price,
-        offerPrice,
-        description,
-        size,
-        inStock,
-        tags
-      } = req.body;
+    // Check if files exist
+    if (!req.files || !req.files.images) {
+      return res.status(400).json({ message: "No image files uploaded." });
+    }
 
-      const images = req.files.map(file => `/uploads/business-card-images/${file.filename}`);
+    // Normalize single or multiple files
+    const files = Array.isArray(req.files.images) ? req.files.images : [req.files.images];
 
-      const newBusinessPoster = new BusinessPoster({
-        name,
-        categoryName,
-        price,
-        offerPrice,
-        images,
-        description,
-        size,
-        inStock,
-        tags: tags ? tags.split(',') : []
+    const uploadedImages = [];
+
+    for (const file of files) {
+      const result = await cloudinary.uploader.upload(file.tempFilePath, {
+        folder: 'business-posters',
       });
+      uploadedImages.push(result.secure_url);
+    }
 
-      const savedBusinessPoster = await newBusinessPoster.save();
+    // Create new business poster
+    const newBusinessPoster = new BusinessPoster({
+      name,
+      categoryName,
+      price,
+      offerPrice,
+      images: uploadedImages,
+      description,
+      size,
+      inStock,
+      tags: tags ? tags.split(',') : []
+    });
 
-      res.status(201).json({
-        success: true,
-        message: 'Business poster created successfully',
-        poster: savedBusinessPoster
-      });
+    const savedBusinessPoster = await newBusinessPoster.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Business poster created successfully',
+      poster: savedBusinessPoster
     });
   } catch (error) {
     console.error("Error creating business poster:", error);
-    res.status(500).json({ message: "Server error", error });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 // ✅ Get all business posters
 export const getAllBusinessPosters = async (req, res) => {
