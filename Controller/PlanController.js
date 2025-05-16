@@ -27,10 +27,6 @@ export const updatePlan = async (req, res) => {
   try {
     const { name, originalPrice, offerPrice, discountPercentage, features } = req.body;
 
-    if (!name || !originalPrice || !offerPrice || !discountPercentage || !features) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
     const plan = await Plan.findOne(); // Assuming only one plan exists
     if (!plan) {
       return res.status(404).json({ message: "Plan not found" });

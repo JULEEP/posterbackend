@@ -62,7 +62,7 @@ export const deleteUser = async (req, res) => {
 
 
 
-// Controller to get all users who have subscribed to at least one plan
+// Controller to get all users who have subscribed to at least one valid plan
 export const getAllUsersWithSubscribedPlans = async (req, res) => {
   try {
     const users = await User.find(
@@ -75,34 +75,46 @@ export const getAllUsersWithSubscribedPlans = async (req, res) => {
       return res.status(404).json({ message: 'No users with subscribed plans found' });
     }
 
-    // Map the users to return the desired structure
+    // Map the users to return the desired structure, filtering out invalid plans
     const formattedUsers = users.map(user => {
       return {
         name: user.name,
         email: user.email,
         mobile: user.mobile,
-        subscribedPlans: user.subscribedPlans.map(plan => ({
-          planId: plan.planId._id,
-          name: plan.planId.name,
-          originalPrice: plan.planId.originalPrice,
-          offerPrice: plan.planId.offerPrice,
-          discountPercentage: plan.planId.discountPercentage,
-          duration: plan.planId.duration,
-          startDate: plan.startDate,
-          endDate: plan.endDate,
-        })),
+        subscribedPlans: user.subscribedPlans
+          .filter(plan => plan.planId !== null) // Exclude invalid plans (null or undefined planId)
+          .map(plan => {
+            return {
+              planId: plan.planId._id,
+              name: plan.planId.name,
+              originalPrice: plan.planId.originalPrice,
+              offerPrice: plan.planId.offerPrice,
+              discountPercentage: plan.planId.discountPercentage,
+              duration: plan.planId.duration,
+              startDate: plan.startDate,
+              endDate: plan.endDate,
+            };
+          }),
       };
     });
 
+    // Only return users with at least one valid plan
+    const validUsers = formattedUsers.filter(user => user.subscribedPlans.length > 0);
+
+    if (validUsers.length === 0) {
+      return res.status(404).json({ message: 'No valid users with subscribed plans found' });
+    }
+
     res.status(200).json({
-      message: 'Users with subscribed plans fetched successfully',
-      users: formattedUsers,
+      message: 'Users with valid subscribed plans fetched successfully',
+      users: validUsers,
     });
   } catch (error) {
     console.error('Error fetching users with subscribed plans:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
 
 
 

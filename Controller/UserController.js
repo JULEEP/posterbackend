@@ -1221,3 +1221,54 @@ export const getAllOrders = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+
+// Update order status by ID
+export const updateOrderStatus = async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ message: "Status is required" });
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      { status },
+      { new: true }
+    )
+      .populate('user', 'name email')
+      .populate('poster', 'name price');
+
+    if (!updatedOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    return res.status(200).json({ message: "Order status updated", order: updatedOrder });
+  } catch (error) {
+    console.error('Error in updateOrderStatus:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+
+
+// Delete order by ID
+export const deleteOrder = async (req, res) => {
+  try {
+    const orderId = req.params.id;
+
+    const deletedOrder = await Order.findByIdAndDelete(orderId);
+
+    if (!deletedOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    return res.status(200).json({ message: "Order deleted successfully" });
+  } catch (error) {
+    console.error('Error in deleteOrder:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+

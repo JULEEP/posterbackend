@@ -53,7 +53,6 @@ export const createPoster = async (req, res) => {
 };
 
 
-// ✅ Edit an existing poster
 export const editPoster = async (req, res) => {
   try {
     const { posterId } = req.params;  // Poster ID from URL parameter
@@ -68,7 +67,7 @@ export const editPoster = async (req, res) => {
       tags
     } = req.body;
 
-    // Find the poster by ID
+    // Find the existing poster by ID
     const poster = await Poster.findById(posterId);
 
     if (!poster) {
@@ -79,37 +78,47 @@ export const editPoster = async (req, res) => {
     let images = poster.images; // Keep existing images by default
 
     // If new images are uploaded, add them to the existing ones
-    if (req.files['images']) {
-      const newImages = req.files['images'].map(file => `uploads/${file.filename}`);
-      images = [...images, ...newImages]; // Append new images to existing ones
+    if (req.files && req.files.images) {
+      const files = Array.isArray(req.files.images) ? req.files.images : [req.files.images];
+      const newImages = [];
+
+      // Upload new images to Cloudinary
+      for (const file of files) {
+        const result = await cloudinary.uploader.upload(file.tempFilePath, {
+          folder: "poster", // Specify a folder in Cloudinary
+        });
+        newImages.push(result.secure_url);  // Store the secure URL of each image
+      }
+
+      // Append the new images to the existing ones
+      images = [...images, ...newImages];
     }
 
-    if (req.files['image']) {
-      const newImage = `uploads/${req.files['image'][0].filename}`;
-      images.push(newImage);  // Append new single image if uploaded
-    }
+    // Conditionally update the fields based on what is provided in the request body
+    if (name) poster.name = name;
+    if (categoryName) poster.categoryName = categoryName;
+    if (price) poster.price = price;
+    if (description) poster.description = description;
+    if (size) poster.size = size;
+    if (festivalDate) poster.festivalDate = festivalDate;
+    if (inStock !== undefined) poster.inStock = inStock;
+    if (tags) poster.tags = tags.split(",");  // Convert tags string to an array
 
-    // Update the poster fields
-    poster.name = name || poster.name;
-    poster.categoryName = categoryName || poster.categoryName;
-    poster.price = price || poster.price;
+    // Always update the images array, even if the other fields were not provided
     poster.images = images;
-    poster.description = description || poster.description;
-    poster.size = size || poster.size;
-    poster.festivalDate = festivalDate || poster.festivalDate;
-    poster.inStock = inStock !== undefined ? inStock : poster.inStock;
-    poster.tags = tags || poster.tags;
 
     // Save the updated poster
     const updatedPoster = await poster.save();
 
-    // Send the updated poster in response
-    res.status(200).json(updatedPoster);
+    return res.status(200).json({
+      message: "Poster updated successfully",
+      poster: updatedPoster,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error editing poster', error });
+    console.error("❌ Error editing poster:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 // ✅ Delete a poster
 export const deletePoster = async (req, res) => {
@@ -137,38 +146,17 @@ export const deletePoster = async (req, res) => {
   
 export const getAllPosters = async (req, res) => {
   try {
+    // Fetch all posters, sorted by creation date in descending order
     let posters = await Poster.find().sort({ createdAt: -1 });
 
-    let hidePrice = true;
-
-    // ✅ Check if user is authenticated and has an active plan
-    if (req.user && req.user.id) {
-      const user = await User.findById(req.user.id);
-      const currentDate = new Date();
-
-      const hasActivePlan = user.subscribedPlans.some(plan => {
-        return new Date(plan.endDate) > currentDate;
-      });
-
-      if (hasActivePlan) {
-        hidePrice = false;
-      }
-    }
-
-    // ✅ If user has no active plan, remove price from posters
-    if (hidePrice) {
-      posters = posters.map(poster => {
-        const { price, ...rest } = poster.toObject(); // Remove price
-        return rest;
-      });
-    }
-
+    // Send the posters with all fields (including price)
     res.status(200).json(posters);
   } catch (error) {
     console.error("Error fetching posters:", error);
     res.status(500).json({ message: 'Error fetching posters', error });
   }
 };
+
 
 
 // ✅ Get posters by categoryName
