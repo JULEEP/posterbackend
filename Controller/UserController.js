@@ -22,12 +22,6 @@ import cron from 'node-cron';
 dotenv.config();
 
 
-
-// Twilio credentials from environment
-const accountSid = process.env.TWILIO_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const twilioPhone = process.env.TWILIO_PHONE;
-
 // Create Twilio client
 
 
@@ -123,7 +117,7 @@ export const registerUser = async (req, res) => {
 
 // Direct Twilio credentials
 const TWILIO_SID = 'ACd37d269a71fda78661c1fd2a54a5b567';
-const TWILIO_AUTH_TOKEN = '6736e3b92854a94a32726e88a256b4d0';
+const TWILIO_AUTH_TOKEN = '5ba76e0523c75184ada92ac902a104ec';
 const TWILIO_PHONE = '+16193309459'; // Your Twilio phone number
 
 // Twilio client setup
