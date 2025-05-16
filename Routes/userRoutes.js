@@ -22,7 +22,8 @@ import {
      checkoutOrder,
      getAllOrders,
      getOrdersByUserId,
-     deleteStory
+     deleteStory,
+     verifyOTP
     } from '../Controller/UserController.js'; // Import UserController
 import uploads from '../config/uploadConfig.js';
 const router = express.Router();
@@ -32,6 +33,7 @@ router.post('/register', registerUser);
 
 // Login Route
 router.post('/login', loginUser);
+router.post('/verify-otp', verifyOTP);
 // Get user details (GET)
 router.get('/get-user/:userId', getUser);  // Adding a middleware to verify JWT token
 

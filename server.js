@@ -15,6 +15,8 @@ import BusinessRoutes from './Routes/BusinessRoutes.js'
 import AdminRoutes from './Routes/AdminRoutes.js'
 import cloudinary from './config/cloudinary.js';
 import fileUpload from 'express-fileupload';
+import cron from 'node-cron';
+import { sendBirthdaySMS, sendAnniversarySMS } from './Controller/UserController.js';  // Import functions directly
 
 dotenv.config();
 
@@ -42,6 +44,35 @@ app.use(cookieParser());
 
 // Database connection
 connectDatabase();
+
+
+// Cron job to check for birthdays and anniversaries at 12 AM
+cron.schedule('0 0 * * *', async () => {
+  console.log('Running cron job for birthday and anniversary wishes...');
+
+  const today = new Date().toISOString().split('T')[0];  // Get today's date in YYYY-MM-DD format
+
+  // Find users with today's birthday
+  const birthdayUsers = await User.find({
+    dob: { $regex: today },  // Match the day and month of DOB (ignore year)
+  });
+
+  birthdayUsers.forEach(user => {
+    sendBirthdaySMS(user.mobile);  // Send SMS to birthday users
+  });
+
+  // Find users with today's marriage anniversary
+  const anniversaryUsers = await User.find({
+    marriageAnniversaryDate: { $regex: today },  // Match the day and month of the anniversary
+  });
+
+  anniversaryUsers.forEach(user => {
+    sendAnniversarySMS(user.mobile);  // Send SMS to anniversary users
+  });
+});
+
+console.log('Cron job scheduled for birthdays and anniversaries at midnight.');
+
 
 
 // Middleware to handle file uploads

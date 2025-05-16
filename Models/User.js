@@ -19,6 +19,10 @@ const userSchema = new mongoose.Schema({
   otp: {
     type: String,
   },
+   otpExpiry: {
+    type: Date, // Expiry time for OTP
+    required: false,
+  },
   // Added fields as strings
   dob: {
     type: String, // Date of Birth as String

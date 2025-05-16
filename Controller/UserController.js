@@ -14,6 +14,7 @@ import Poster from '../Models/Poster.js';
 import BusinessPoster from '../Models/BusinessPoster.js';
 import QRCode from 'qrcode';  // You need to install 'qrcode' using npm
 import cloudinary from '../config/cloudinary.js';
+import cron from 'node-cron';
 
 
 
@@ -28,7 +29,6 @@ const authToken = process.env.TWILIO_AUTH_TOKEN;
 const twilioPhone = process.env.TWILIO_PHONE;
 
 // Create Twilio client
-const client = twilio(accountSid, authToken);
 
 
 
@@ -121,58 +121,194 @@ export const registerUser = async (req, res) => {
 
 
 
+// Direct Twilio credentials
+const TWILIO_SID = 'ACd37d269a71fda78661c1fd2a54a5b567';
+const TWILIO_AUTH_TOKEN = '6736e3b92854a94a32726e88a256b4d0';
+const TWILIO_PHONE = '+16193309459'; // Your Twilio phone number
+
+// Twilio client setup
+const client = twilio(TWILIO_SID, TWILIO_AUTH_TOKEN);
+
+// 🔢 Generate 4-digit OTP
+const generateOTP = () => {
+  return Math.floor(1000 + Math.random() * 9000);
+};
+
+// 📲 Send OTP with clean message
+const sendOTP = async (mobile, otp) => {
+  const phoneNumber = `+91${mobile}`;
+  const message = `
+🔐 Your secure login OTP is: ${otp}
+⏳ OTP is valid for 5 minutes only.
+Please do not share it with anyone.
+
+– Team POSTER BANAVO
+`.trim();
+
+  try {
+    await client.messages.create({
+      body: message,
+      to: phoneNumber,
+      from: TWILIO_PHONE,
+    });
+
+    console.log(`✅ OTP sent to ${phoneNumber}: ${otp}`);
+  } catch (error) {
+    console.error('❌ Error sending OTP:', error);
+    throw new Error('Failed to send OTP');
+  }
+};
+
+// 👤 LOGIN USER – Send OTP
 export const loginUser = async (req, res) => {
   const { mobile } = req.body;
 
-  // 🔴 Check if mobile is provided
-  if (!mobile) {
-    return res.status(400).json({ error: "Mobile number is required" });
-  }
-
-  // 🔴 Validate mobile number format (Example: Check if it's a 10-digit number)
-  const mobilePattern = /^[0-9]{10}$/; // Basic 10-digit mobile number validation
-  if (!mobilePattern.test(mobile)) {
-    return res.status(400).json({ error: "Invalid mobile number format" });
+  if (!mobile || !/^[0-9]{10}$/.test(mobile)) {
+    return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
   }
 
   try {
-    // 🔍 Check if user exists with this mobile number
     const user = await User.findOne({ mobile });
 
-    // ❌ If user does not exist
     if (!user) {
-      return res.status(404).json({
-        error: "User not found. Please register first."
-      });
+      return res.status(404).json({ error: 'User not found. Please register first.' });
     }
 
-    // 🔐 Create JWT token
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET_KEY,
-      { expiresIn: '1h' }
-    );
+    const otp = generateOTP();
+    await sendOTP(mobile, otp);
 
-    // ✅ Return user info + token
-return res.status(200).json({
-  message: "Login successful",
-  token,
-  user: {
-    _id: user._id,
-    mobile: user.mobile,
-    name: user.name || null,
-    dob: user.dob || null,  // Add dob here
-  }
-});
+    user.otp = otp;
+    user.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 min expiry
+    await user.save();
 
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({
-      error: "Something went wrong during login",
-      details: err.message
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET_KEY, { expiresIn: '1h' });
+
+    return res.status(200).json({
+      message: 'OTP sent successfully. Please verify.',
+      otp, // ⚠️ For testing only, remove in production
+      token,
+      user: {
+        _id: user._id,
+        mobile: user.mobile,
+        name: user.name || null,
+        dob: user.dob || null,
+      },
     });
+  } catch (err) {
+    console.error('❌ Login Error:', err);
+    return res.status(500).json({ error: 'Something went wrong', details: err.message });
   }
 };
+
+
+export const verifyOTP = async (req, res) => {
+  const { otp } = req.body;
+
+  if (!otp) {
+    return res.status(400).json({ error: 'OTP is required' });
+  }
+
+  try {
+    const user = await User.findOne({ otp: parseInt(otp) });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid OTP' });
+    }
+
+    // OTP matched – clear OTP
+    user.otp = null;
+    user.otpExpiry = null; // Optional: only if you store expiry
+    await user.save();
+
+    return res.status(200).json({
+      message: 'OTP verified successfully',
+      user: {
+        _id: user._id,
+        mobile: user.mobile,
+        name: user.name || null,
+        dob: user.dob || null,
+      },
+    });
+  } catch (err) {
+    console.error('OTP Verification Error:', err);
+    return res.status(500).json({ error: 'Server error', details: err.message });
+  }
+};
+
+
+
+// Birthday Wishes SMS Function
+export const sendBirthdaySMS = async (mobile) => {
+  const message = `
+🎉 Happy Birthday! 🎂
+Wishing you a day filled with love, joy, and success.
+Enjoy your special day!
+
+– Team POSTER
+`;
+
+  try {
+    // Sending SMS via Twilio
+    await client.messages.create({
+      body: message,
+      to: `+91${mobile}`,  // Indian mobile number format
+      from: 'YOUR_TWILIO_PHONE',  // Replace with your Twilio phone number
+    });
+    console.log(`Birthday wishes sent to ${mobile}`);
+  } catch (error) {
+    console.error('Error sending birthday SMS:', error);
+  }
+};
+
+// Anniversary Wishes SMS Function
+export const sendAnniversarySMS = async (mobile) => {
+  const message = `
+💍 Happy Marriage Anniversary! 💖
+Wishing you a lifetime of love, happiness, and togetherness.
+Enjoy your special day!
+
+– Team POSTER
+`;
+
+  try {
+    // Sending SMS via Twilio
+    await client.messages.create({
+      body: message,
+      to: `+91${mobile}`,  // Indian mobile number format
+      from: 'YOUR_TWILIO_PHONE',  // Replace with your Twilio phone number
+    });
+    console.log(`Anniversary wishes sent to ${mobile}`);
+  } catch (error) {
+    console.error('Error sending anniversary SMS:', error);
+  }
+};
+
+// Cron job to check for birthdays and anniversaries at 12 AM
+cron.schedule('0 0 * * *', async () => {
+  console.log('Running cron job for birthday and anniversary wishes...');
+
+  const today = new Date().toISOString().split('T')[0];  // Get today's date in YYYY-MM-DD format
+
+  // Find users with today's birthday
+  const birthdayUsers = await User.find({
+    dob: { $regex: today },  // Match the day and month of DOB (ignore year)
+  });
+
+  birthdayUsers.forEach(user => {
+    sendBirthdaySMS(user.mobile);  // Send SMS to birthday users
+  });
+
+  // Find users with today's marriage anniversary
+  const anniversaryUsers = await User.find({
+    marriageAnniversaryDate: { $regex: today },  // Match the day and month of the anniversary
+  });
+
+  anniversaryUsers.forEach(user => {
+    sendAnniversarySMS(user.mobile);  // Send SMS to anniversary users
+  });
+});
+
+console.log('Cron job scheduled for birthdays and anniversaries at midnight.');
 
 
 
