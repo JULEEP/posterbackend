@@ -172,20 +172,21 @@ export const loginUser = async (req, res) => {
     await sendOTP(mobile, otp);
 
     user.otp = otp;
-    user.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 min expiry
+    user.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes expiry
     await user.save();
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET_KEY, { expiresIn: '1h' });
 
     return res.status(200).json({
       message: 'OTP sent successfully. Please verify.',
-      otp, // ⚠️ For testing only, remove in production
+      otp, // ⚠️ For testing only, remove or mask in production
       token,
       user: {
         _id: user._id,
         mobile: user.mobile,
         name: user.name || null,
         dob: user.dob || null,
+        email: user.email || null, // ✅ Added email
       },
     });
   } catch (err) {
@@ -193,6 +194,7 @@ export const loginUser = async (req, res) => {
     return res.status(500).json({ error: 'Something went wrong', details: err.message });
   }
 };
+
 
 
 export const verifyOTP = async (req, res) => {

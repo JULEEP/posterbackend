@@ -13,6 +13,7 @@ import { fileURLToPath } from 'url';  // Import the fileURLToPath method
 import PlanRoutes from './Routes/PlanRoutes.js'
 import BusinessRoutes from './Routes/BusinessRoutes.js'
 import AdminRoutes from './Routes/AdminRoutes.js'
+import paymentRoutes from './Routes/paymentRoutes.js'
 import cloudinary from './config/cloudinary.js';
 import fileUpload from 'express-fileupload';
 import cron from 'node-cron';
@@ -106,6 +107,8 @@ app.use('/api/poster', PosterRoutes);
 app.use('/api/plans', PlanRoutes);
 app.use('/api/business', BusinessRoutes);
 app.use('/api/admin', AdminRoutes);
+app.use('/api/payment', paymentRoutes); // So your route becomes /api/payment/phonepe
+
 
 
 
