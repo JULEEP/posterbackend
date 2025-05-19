@@ -4,41 +4,43 @@ import User from '../Models/User.js'; // assuming user model for subscription up
 import { randomUUID } from 'crypto';
 
 
-// PhonePe Sandbox Credentials
-const clientId = "TEST-M22HFU8UDDBYR_25051";
-const clientSecret = "MjcxNTAxYjAtZjA1Ny00YmQwLTg3YTktMGIyOTNmMjIzNmMz";
-const clientVersion = 1;
-const env = Env.SANDBOX;
-
-const client = StandardCheckoutClient.getInstance(clientId, clientSecret, clientVersion, env);
-
+// Init PhonePe SDK client
+const client = StandardCheckoutClient.getInstance(
+  "TEST-M22HFU8UDDBYR_25051", // Merchant ID
+  "MjcxNTAxYjAtZjA1Ny00YmQwLTg3YTktMGIyOTNmMjIzNmMz", // Salt Key
+  1, // Salt Index
+  Env.SANDBOX // or Env.PROD
+);
 
 export const payWithPhonePe = async (req, res) => {
   try {
     const { userId, planId } = req.body;
 
-    // Get plan
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
     const plan = await Plan.findById(planId);
     if (!plan) return res.status(404).json({ message: "Plan not found" });
 
     const amount = plan.offerPrice * 100; // in paise
-    const redirectUrl = "http://localhost:3000/payment/phonepe-success";  // Can be any dummy for now
-    const merchantOrderId = `txn_${Date.now()}_${userId}`;
+    const merchantOrderId = `txn_${randomUUID()}`;
+    const redirectUrl = "http://localhost:3000/payment/phonepe-success";
 
-    // Build payment request
+    // Build payment request using SDK
     const request = StandardCheckoutPayRequest.builder()
       .merchantOrderId(merchantOrderId)
       .amount(amount)
       .redirectUrl(redirectUrl)
       .build();
 
-    const response = await client.pay(request); // Send request to PhonePe
+    // Send payment request
+    const response = await client.pay(request);
 
-    // Respond back to Flutter app
+    // Send result to mobile app / frontend
     res.status(200).json({
       success: true,
       message: "Payment initiated",
-      redirectUrl: response.redirectUrl,      // Flutter will open this in WebView or browser
+      redirectUrl: response.redirectUrl,
       merchantOrderId,
       amount,
       planName: plan.name,
@@ -54,7 +56,6 @@ export const payWithPhonePe = async (req, res) => {
     });
   }
 };
-
 
 // ✅ 2. Handle Payment Callback
 export const phonePeCallbackHandler = async (req, res) => {
