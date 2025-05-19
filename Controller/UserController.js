@@ -15,6 +15,10 @@ import BusinessPoster from '../Models/BusinessPoster.js';
 import QRCode from 'qrcode';  // You need to install 'qrcode' using npm
 import cloudinary from '../config/cloudinary.js';
 import cron from 'node-cron';
+import dayjs from 'dayjs';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter.js'; // ✅ note the ".js"
+dayjs.extend(isSameOrAfter);
+
 
 
 
@@ -60,38 +64,78 @@ const upload = multer({
 });
 
 
+// Helper to generate 8-character referral code
+const generateReferralCode = () => {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return code;
+};
+
 // User Registration Controller
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, mobile, dob, marriageAnniversaryDate } = req.body;
+    const {
+      name,
+      email,
+      mobile,
+      dob,
+      marriageAnniversaryDate,
+      referralCode: enteredCode, // optional input field
+    } = req.body;
 
-    // Validate mandatory fields
+    // ✅ Basic validation
     if (!name || !mobile || !dob) {
       return res.status(400).json({ message: 'Name, Mobile, and Date of Birth are required!' });
     }
 
-    // Check if user already exists
+    // ✅ Prevent duplicate email or mobile
     const userExist = await User.findOne({ $or: [{ email }, { mobile }] });
     if (userExist) {
       return res.status(400).json({ message: 'User with this email or mobile already exists!' });
     }
 
-    // Create a new user with dob and marriageAnniversaryDate fields
+    // ✅ Generate a unique referral code for this new user
+    let newReferralCode;
+    let codeExists = true;
+    while (codeExists) {
+      newReferralCode = generateReferralCode();
+      const existingCode = await User.findOne({ referralCode: newReferralCode });
+      if (!existingCode) codeExists = false;
+    }
+
+    // ✅ Prepare new user data
     const newUser = new User({
       name,
       email,
       mobile,
-      dob,  // Add DOB
-      marriageAnniversaryDate,  // Add Marriage Anniversary Date
+      dob,
+      marriageAnniversaryDate,
+      referralCode: newReferralCode,
     });
 
-    // Save the user to the database
+    // ✅ Handle referral reward if a code was entered
+    if (enteredCode) {
+      const referrer = await User.findOne({ referralCode: enteredCode.toUpperCase() });
+      if (referrer) {
+        referrer.referralPoints += 10; // reward
+        await referrer.save();
+      } else {
+        return res.status(400).json({ message: 'Invalid referral code!' });
+      }
+    }
+
+    // ✅ Save the new user
     await newUser.save();
 
-    // Generate JWT token for the user
-    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET_KEY, { expiresIn: '1h' });
+    // ✅ Issue JWT token
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET_KEY, {
+      expiresIn: '1h',
+    });
 
-    // Return the response with user data
+    // ✅ Respond with success
     return res.status(201).json({
       message: 'Registration successful',
       token,
@@ -102,15 +146,19 @@ export const registerUser = async (req, res) => {
         mobile: newUser.mobile,
         dob: newUser.dob,
         marriageAnniversaryDate: newUser.marriageAnniversaryDate,
+        referralCode: newUser.referralCode,
+        referralPoints: newUser.referralPoints,
         createdAt: newUser.createdAt,
         updatedAt: newUser.updatedAt,
       },
     });
+
   } catch (error) {
-    console.error(error);
+    console.error('Registration error:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 
 
@@ -661,13 +709,25 @@ export const getAllStories = async (req, res) => {
     // Fetch all stories, sorted by expiration time (ascending)
     const stories = await Story.find().sort({ expired_at: 1 });
 
-    // Return the stories
+    // Filter out stories where images and videos are empty but caption exists
+    const filteredStories = stories.filter(story => {
+      // Keep stories where caption exists, but either images or videos should not be empty
+      return (
+        (story.caption && story.caption.trim() !== '') &&
+        ((story.images && story.images.length > 0) || (story.videos && story.videos.length > 0))
+      );
+    });
+
+    // Log filtered stories for debugging
+    console.log("Filtered Stories: ", filteredStories);
+
+    // Return the filtered stories in the response
     res.status(200).json({
       message: "Stories fetched successfully!",
-      stories
+      stories: filteredStories
     });
   } catch (error) {
-    console.error(error);
+    console.error('Error fetching stories:', error);
     res.status(500).json({ message: "Something went wrong!" });
   }
 };
@@ -676,19 +736,25 @@ export const getAllStories = async (req, res) => {
 // ✅ Get user's all stories
 export const getUserStories = async (req, res) => {
   try {
-    const { userId } = req.params;  // User ID from params
+    const { userId } = req.params;
 
-    // Find the user by userId
-    const user = await User.findById(userId).populate('myStories'); // Populate 'myStories' field to get complete story details
+    // Find user and populate their stories
+    const user = await User.findById(userId).populate('myStories');
 
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
 
-    // If user exists, return the user's stories
+    // Filter stories: Keep only if images or videos are present
+    const filteredStories = user.myStories.filter(story =>
+      (story.images && story.images.length > 0) ||
+      (story.videos && story.videos.length > 0)
+    );
+
+    // Return filtered stories
     res.status(200).json({
       message: "User's stories retrieved successfully!",
-      stories: user.myStories,  // The populated stories will be here
+      stories: filteredStories,
     });
   } catch (error) {
     console.error("Error fetching user's stories:", error);
@@ -1271,6 +1337,60 @@ export const deleteOrder = async (req, res) => {
   } catch (error) {
     console.error('Error in deleteOrder:', error);
     return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+
+
+
+export const showBirthdayWishOrCountdown = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const today = dayjs();
+    const name = user.name || 'User';
+    const wishes = [];
+
+    if (!user.dob) {
+      return res.json({
+        message: `DOB not found for ${name}`,
+        wishes: [],
+      });
+    }
+
+    const birthDate = dayjs(user.dob);
+    let nextBirthday = birthDate.year(today.year());
+
+    // If birthday this year is already gone, set to next year
+    if (nextBirthday.isBefore(today, 'day')) {
+      nextBirthday = nextBirthday.add(1, 'year');
+    }
+
+    const isToday = nextBirthday.format('MM-DD') === today.format('MM-DD');
+
+    if (isToday && today.hour() === 0) {
+      // Exactly 12 AM wish
+      wishes.push(`🎉 It's 12:00 AM — Happy Birthday, ${name}! May your day be filled with happiness.`);
+    } else if (isToday) {
+      wishes.push(`🎉 Happy Birthday, ${name}! Wishing you joy and love.`);
+    } else {
+      const daysLeft = nextBirthday.diff(today, 'day');
+      wishes.push(`🎂 ${name}, your birthday is in ${daysLeft} day(s) on ${nextBirthday.format('MMMM DD')}.`);
+    }
+
+    res.json({
+      message: 'Birthday wish or countdown',
+      wishes,
+    });
+
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Something went wrong' });
   }
 };
 

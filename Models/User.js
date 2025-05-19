@@ -34,6 +34,17 @@ const userSchema = new mongoose.Schema({
     type: Schema.Types.ObjectId,
     ref: 'Booking', // Reference to Booking model
   }],
+  referralCode: {
+  type: String,
+  unique: true,
+  uppercase: true,
+  trim: true,
+},
+
+referralPoints: {
+  type: Number,
+  default: 0,
+},
   // Customers field with an array of customers inside the same schema
   customers: [
     {
