@@ -2,6 +2,7 @@ import { StandardCheckoutClient, Env, StandardCheckoutPayRequest } from 'pg-sdk-
 import Plan from '../Models/Plan.js';
 import User from '../Models/User.js'; // assuming user model for subscription update
 import { randomUUID } from 'crypto';
+import Payment from '../Models/Payment.js';
 
 
 // Init PhonePe SDK client
@@ -24,27 +25,47 @@ export const payWithPhonePe = async (req, res) => {
 
     const amount = plan.offerPrice * 100; // in paise
     const merchantOrderId = `txn_${randomUUID()}`;
-    const redirectUrl = "http://localhost:3000/payment/phonepe-success";
 
     // Build payment request using SDK
     const request = StandardCheckoutPayRequest.builder()
       .merchantOrderId(merchantOrderId)
       .amount(amount)
-      .redirectUrl(redirectUrl)
       .build();
 
     // Send payment request
     const response = await client.pay(request);
 
-    // Send result to mobile app / frontend
+    // ✅ Save payment to DB
+    await Payment.create({
+      merchantOrderId,
+      userId: user._id,
+      plan: plan._id,
+      amount,
+      currency: "INR",
+      status: "INITIATED",
+      paymentResponse: response,
+    });
+
+    // ✅ Send response including user and plan details
     res.status(200).json({
       success: true,
       message: "Payment initiated",
-      redirectUrl: response.redirectUrl,
       merchantOrderId,
+      response, // keep full PhonePe SDK response
       amount,
-      planName: plan.name,
       currency: "INR",
+      plan: {
+        id: plan._id,
+        name: plan.name,
+        price: plan.price,
+        offerPrice: plan.offerPrice,
+      },
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+      },
     });
 
   } catch (error) {
@@ -56,7 +77,6 @@ export const payWithPhonePe = async (req, res) => {
     });
   }
 };
-
 // ✅ 2. Handle Payment Callback
 export const phonePeCallbackHandler = async (req, res) => {
   try {
@@ -110,19 +130,52 @@ export const phonePeCallbackHandler = async (req, res) => {
 
 
 export const checkPhonePeStatus = async (req, res) => {
-  try {
+ try {
     const { merchantOrderId } = req.params;
 
-    const response = await client.getOrderStatus(merchantOrderId);
+    // Find the payment and populate related user and plan
+    const payment = await Payment.findOne({ merchantOrderId })
+      .populate("userId", "-password") // Exclude password
+      .populate("plan");
+
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        message: "Payment not found",
+      });
+    }
+
     res.status(200).json({
       success: true,
-      orderId: merchantOrderId,
-      state: response.state, // 'COMPLETED', 'FAILED', etc.
+      message: "Payment details fetched successfully",
+      payment: {
+        merchantOrderId: payment.merchantOrderId,
+        status: payment.status,
+        amount: payment.amount,
+        currency: payment.currency,
+        createdAt: payment.createdAt,
+        paidAt: payment.paidAt || null,
+      },
+      user: {
+        id: payment.userId._id,
+        name: payment.userId.name,
+        email: payment.userId.email,
+        phone: payment.userId.phone,
+      },
+      plan: {
+        id: payment.plan._id,
+        name: payment.plan.name,
+        description: payment.plan.description,
+        price: payment.plan.price,
+        offerPrice: payment.plan.offerPrice,
+      },
     });
+
   } catch (error) {
+    console.error("Error fetching payment details:", error);
     res.status(500).json({
       success: false,
-      message: "Error checking payment status",
+      message: "Error fetching payment details",
       error: error.message,
     });
   }
