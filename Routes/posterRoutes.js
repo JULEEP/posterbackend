@@ -12,12 +12,15 @@ import {
   getPostersByCategory,
   editPoster,
   deletePoster,
-  Postercreate
+  Postercreate,
+  createPosterAndUpload,
+  updatePoster
 } from '../Controller/PosterController.js';
 
 const router = express.Router();
 
 router.post('/create-poster', createPoster);
+router.put('/update/:posterId', updatePoster);
 router.get('/getallposter', getAllPosters); 
 router.put('/editposter/:posterId', editPoster);
 router.delete('/deleteposter/:posterId', deletePoster);
@@ -29,6 +32,7 @@ router.get('/chemicalposter', getChemicalPosters);
 router.get('/clothingposter', getClothingPosters);
 router.get('/ugadiposter', getUgadiPosters);
 router.post('/create', Postercreate);
+router.post('/create', createPosterAndUpload);
 
 
 

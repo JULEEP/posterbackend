@@ -85,6 +85,10 @@ referralPoints: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Story' // Referring to the Story model
   }],
+   posters: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Poster'  // This references the 'Poster' model
+  }],
 }, {
   timestamps: true  // CreatedAt and UpdatedAt fields automatically
 });

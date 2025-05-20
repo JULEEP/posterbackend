@@ -26,7 +26,8 @@ import {
      verifyOTP,
      updateOrderStatus,
      deleteOrder,
-     showBirthdayWishOrCountdown
+     showBirthdayWishOrCountdown,
+     getReferralCodeByUserId
     } from '../Controller/UserController.js'; // Import UserController
 import uploads from '../config/uploadConfig.js';
 const router = express.Router();
@@ -71,6 +72,7 @@ router.put('/orderstatus/:id', updateOrderStatus);
 router.delete('/deleteorder/:id', deleteOrder);
 router.get('/userorders/:userId', getOrdersByUserId); // GET /api/orders/user/:userId
 router.get('/wishes/:userId', showBirthdayWishOrCountdown);
+router.get('/refferalcode/:userId', getReferralCodeByUserId);
 
 
 
