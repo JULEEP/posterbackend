@@ -165,7 +165,7 @@ export const registerUser = async (req, res) => {
 
 // Direct Twilio credentials
 const TWILIO_SID = 'ACd37d269a71fda78661c1fd2a54a5b567';
-const TWILIO_AUTH_TOKEN = '5ba76e0523c75184ada92ac902a104ec';
+const TWILIO_AUTH_TOKEN = '81cf6d33eb27bf051991ebcd9aecd9d0';
 const TWILIO_PHONE = '+16193309459'; // Your Twilio phone number
 
 // Twilio client setup
@@ -179,13 +179,8 @@ const generateOTP = () => {
 // 📲 Send OTP with clean message
 const sendOTP = async (mobile, otp) => {
   const phoneNumber = `+91${mobile}`;
-  const message = `
-🔐 Your secure login OTP is: ${otp}
-⏳ OTP is valid for 5 minutes only.
-Please do not share it with anyone.
+ const message = `Your one-time password (OTP) is: ${otp}. It is valid for 5 minutes. Do not share it with anyone. – Team POSTER BANAVO`;
 
-– Team POSTER BANAVO
-`.trim();
 
   try {
     await client.messages.create({
