@@ -14,12 +14,16 @@ import {
   deletePoster,
   Postercreate,
   createPosterAndUpload,
-  updatePoster
+  updatePoster,
+  canvasCreatePoster,
+  getAllCanvasPosters,
+  getSingleCanvasPoster
 } from '../Controller/PosterController.js';
 
 const router = express.Router();
 
 router.post('/create-poster', createPoster);
+router.post('/create-canvaposter', canvasCreatePoster);
 router.put('/update/:posterId', updatePoster);
 router.get('/getallposter', getAllPosters); 
 router.put('/editposter/:posterId', editPoster);
@@ -33,6 +37,9 @@ router.get('/clothingposter', getClothingPosters);
 router.get('/ugadiposter', getUgadiPosters);
 router.post('/create', Postercreate);
 router.post('/create', createPosterAndUpload);
+router.get('/canvasposters', getAllCanvasPosters);
+router.get('/singlecanvasposters/:posterId', getSingleCanvasPoster);
+
 
 
 
